@@ -6,8 +6,80 @@ import sys
 import csv
 import random
 import numpy as np
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, precision_recall_fscore_support, classification_report, roc_auc_score
 
+def build_rnn_dataset(dataset, train_frac=0.9, seed=20):    
+    """
+    Given the pandas dataframe loaded from the CSV file, construct
+    the dataset to be consumed by the TensorFlow RNN module. 
+    """
+    label_cols = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
+    
+    num_examples = len(dataset)
+    num_train = int(train_frac * num_examples)
+    
+    # np.random.seed(seed)
+    shuffled = dataset.iloc[np.random.permutation(num_examples)]
+    train = shuffled.iloc[:num_train]
+    dev = shuffled.iloc[num_train:]
+    
+    train_text, dev_text = train['comment_text'], dev['comment_text']
+    train_labels, dev_labels = train[label_cols], dev[label_cols]
+
+
+    X_rnn_train, X_rnn_dev = [], []
+    for comment in train_text:
+        X_rnn_train.append(comment.split())
+    for comment in dev_text:
+        X_rnn_dev.append(comment.split())
+        
+    Y_rnn_train, Y_rnn_dev = [], []
+    for _, labels in train_labels.iterrows():
+        Y_rnn_train.append(list(labels))
+    for _, labels in dev_labels.iterrows():
+        Y_rnn_dev.append(list(labels))
+        
+    return ({'train': X_rnn_train, 'dev': X_rnn_dev},
+            {'train': Y_rnn_train, 'dev': Y_rnn_dev})
+
+def evaluate(labels, preds, verbose=False):
+    """
+    Given the labels/preds (assuming multilabel), evaluate given
+    statistics such as precision, recall, f-score, and ROC-AUC. 
+    
+    labels: list (of shape (num_ex, num_class))
+    preds: np.array shape (num_ex, num_class) (can be probabilistic)
+    """
+    labels = np.array(labels)
+
+    # Class-wise Precision/Recall/F1
+    label_cols = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
+    label_counts = np.sum(labels, axis=0)
+    
+    f1s = []
+    for i in range(labels.shape[1]):
+        if labels.shape[1] > 1:
+            print("CLASS: %s" % label_cols[i])
+        p,r,f,s = precision_recall_fscore_support(labels[:, i], 
+                                                  np.round(preds[:,i]),
+                                                  average="binary")
+        if verbose:
+            print(classification_report(labels[:, i], np.round(preds[:,i])))
+        print("p, r, f1: %0.04f, %0.04f, %0.04f" % (p, r, f))
+        f1s.append(f)
+        print()
+    print("average F1 score: %f" % (np.mean(f1s)))
+    
+    if labels.shape[1] > 1:
+        print("weighted avg. F1 scored: %f" % (np.dot(label_counts, np.array(f1s)) / np.sum(label_counts)))
+        
+        # ROC-AUC
+        roc_auc = roc_auc_score(labels, preds)
+        print("macro-averaged ROC-AUC score: %f" % roc_auc)
+
+#####################################################################################
+
+#####################################################################################
 
 
 def build(src_filename, delimiter=',', header=True, quoting=csv.QUOTE_MINIMAL):
