@@ -18,7 +18,7 @@ def build_rnn_dataset(dataset, train_frac=0.9, seed=20):
     num_examples = len(dataset)
     num_train = int(train_frac * num_examples)
     
-    # np.random.seed(seed)
+    np.random.seed(seed)
     shuffled = dataset.iloc[np.random.permutation(num_examples)]
     train = shuffled.iloc[:num_train]
     dev = shuffled.iloc[num_train:]

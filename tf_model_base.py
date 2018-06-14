@@ -164,13 +164,14 @@ class TfModelBase(object):
                 loss += batch_loss
                 
             # Get Dev Loss. 
-            dev_loss = 0
-            for X_batch, y_batch in self.batch_iterator(X_dev, y_dev):
-                dev_loss += self.sess.run(self.cost, feed_dict=self.train_dict(X_batch, y_batch))
-            print("Train Loss: ", loss)
-            print("Dev Loss: ", dev_loss)
-            print()
-            write_summary(dev_loss, "dev/loss", summary_writer, gstep)
+            if i % self.eval_every == 0:
+                dev_loss = 0
+                for X_batch, y_batch in self.batch_iterator(X_dev, y_dev):
+                    dev_loss += self.sess.run(self.cost, feed_dict=self.train_dict(X_batch, y_batch))
+                print("Train Loss: ", loss)
+                print("Dev Loss: ", dev_loss)
+                print()
+                write_summary(dev_loss, "dev/loss", summary_writer, gstep)
                 
             self.errors.append(loss)
             
